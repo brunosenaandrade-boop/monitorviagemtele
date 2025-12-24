@@ -3,14 +3,23 @@ import json
 import os
 import urllib.request
 import urllib.parse
+import hashlib
+import hmac
 from datetime import datetime
 
 # Configurações
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
+TELEGRAM_SECRET = os.environ.get('TELEGRAM_WEBHOOK_SECRET', '')  # Opcional
 AMADEUS_KEY = os.environ.get('AMADEUS_API_KEY', '')
 AMADEUS_SECRET = os.environ.get('AMADEUS_API_SECRET', '')
 UPSTASH_URL = os.environ.get('UPSTASH_REDIS_REST_URL', '')
 UPSTASH_TOKEN = os.environ.get('UPSTASH_REDIS_REST_TOKEN', '')
+
+# Timeout padrão para requisições HTTP (10 segundos)
+HTTP_TIMEOUT = 10
+
+# Cache do token Amadeus (em memória por execução)
+_amadeus_token_cache = {"token": None, "expires_at": 0}
 
 
 def redis_get(key):
@@ -20,24 +29,31 @@ def redis_get(key):
     try:
         url = f"{UPSTASH_URL}/get/{key}"
         req = urllib.request.Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as response:
             data = json.loads(response.read().decode())
-            return json.loads(data.get('result')) if data.get('result') else None
-    except:
+            result = data.get('result')
+            return json.loads(result) if result else None
+    except urllib.error.URLError as e:
+        print(f"Redis GET error: {e}")
+        return None
+    except json.JSONDecodeError as e:
+        print(f"Redis JSON error: {e}")
         return None
 
 
 def redis_set(key, value):
     """Salva valor no Redis."""
     if not UPSTASH_URL:
-        return
+        return False
     try:
         encoded_value = urllib.parse.quote(json.dumps(value))
         url = f"{UPSTASH_URL}/set/{key}/{encoded_value}"
         req = urllib.request.Request(url, headers={"Authorization": f"Bearer {UPSTASH_TOKEN}"})
-        urllib.request.urlopen(req)
-    except Exception as e:
-        print(f"Redis error: {e}")
+        urllib.request.urlopen(req, timeout=HTTP_TIMEOUT)
+        return True
+    except urllib.error.URLError as e:
+        print(f"Redis SET error: {e}")
+        return False
 
 
 def send_message(chat_id, text, reply_markup=None):
@@ -57,9 +73,11 @@ def send_message(chat_id, text, reply_markup=None):
         headers={"Content-Type": "application/json"}
     )
     try:
-        urllib.request.urlopen(req)
-    except Exception as e:
-        print(f"Telegram error: {e}")
+        urllib.request.urlopen(req, timeout=HTTP_TIMEOUT)
+        return True
+    except urllib.error.URLError as e:
+        print(f"Telegram send error: {e}")
+        return False
 
 
 def answer_callback(callback_id):
@@ -72,13 +90,20 @@ def answer_callback(callback_id):
         headers={"Content-Type": "application/json"}
     )
     try:
-        urllib.request.urlopen(req)
-    except:
-        pass
+        urllib.request.urlopen(req, timeout=HTTP_TIMEOUT)
+    except urllib.error.URLError:
+        pass  # Não crítico
 
 
 def get_amadeus_token():
-    """Obtém token da API Amadeus."""
+    """Obtém token da API Amadeus com cache."""
+    global _amadeus_token_cache
+
+    # Verificar cache
+    now = datetime.now().timestamp()
+    if _amadeus_token_cache["token"] and _amadeus_token_cache["expires_at"] > now:
+        return _amadeus_token_cache["token"]
+
     url = "https://test.api.amadeus.com/v1/security/oauth2/token"
     data = urllib.parse.urlencode({
         "grant_type": "client_credentials",
@@ -86,10 +111,21 @@ def get_amadeus_token():
         "client_secret": AMADEUS_SECRET
     }).encode()
     req = urllib.request.Request(url, data=data)
+
     try:
-        with urllib.request.urlopen(req) as response:
-            return json.loads(response.read().decode()).get("access_token")
-    except:
+        with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as response:
+            result = json.loads(response.read().decode())
+            token = result.get("access_token")
+            expires_in = result.get("expires_in", 1800)  # Padrão 30 min
+
+            # Cachear com margem de 60 segundos
+            _amadeus_token_cache = {
+                "token": token,
+                "expires_at": now + expires_in - 60
+            }
+            return token
+    except urllib.error.URLError as e:
+        print(f"Amadeus token error: {e}")
         return None
 
 
@@ -101,8 +137,9 @@ def search_airports(keyword):
 
     url = f"https://test.api.amadeus.com/v1/reference-data/locations?keyword={urllib.parse.quote(keyword)}&subType=AIRPORT,CITY"
     req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+
     try:
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as response:
             data = json.loads(response.read().decode())
             return [
                 {
@@ -112,7 +149,8 @@ def search_airports(keyword):
                 }
                 for loc in data.get("data", [])[:5]
             ]
-    except:
+    except urllib.error.URLError as e:
+        print(f"Airport search error: {e}")
         return []
 
 
@@ -128,8 +166,9 @@ def search_flights(origin, destination, departure_date, return_date=None, adults
 
     url = f"https://test.api.amadeus.com/v2/shopping/flight-offers?{params}"
     req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+
     try:
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req, timeout=30) as response:  # Timeout maior para busca
             data = json.loads(response.read().decode())
             offers = []
             for offer in data.get("data", [])[:5]:
@@ -141,9 +180,14 @@ def search_flights(origin, destination, departure_date, return_date=None, adults
                     "stops": len(offer["itineraries"][0]["segments"]) - 1
                 })
             return sorted(offers, key=lambda x: x["price"])
-    except Exception as e:
+    except urllib.error.URLError as e:
         print(f"Flight search error: {e}")
         return []
+
+
+def format_brl(value):
+    """Formata valor em Real brasileiro (R$ 1.234,56)."""
+    return f"R$ {value:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
 
 
 def main_menu(chat_id):
@@ -156,7 +200,7 @@ def main_menu(chat_id):
             [{"text": "Ajuda", "callback_data": "help"}]
         ]
     }
-    send_message(chat_id, "*Monitor de Viagens*\n\nEscolha uma opcao:", keyboard)
+    send_message(chat_id, "*Monitor de Viagens*\n\nEscolha uma opção:", keyboard)
 
 
 def handle_message(message):
@@ -172,7 +216,7 @@ def handle_message(message):
 
     state_data = redis_get(f"state:{user_id}")
     if not state_data:
-        send_message(chat_id, "Use /start para comecar!")
+        send_message(chat_id, "Use /start para começar!")
         return
 
     state = state_data.get("state", "")
@@ -221,21 +265,21 @@ def handle_message(message):
         try:
             date = datetime.strptime(text, "%d/%m/%Y")
             if date.date() < datetime.now().date():
-                send_message(chat_id, "A data nao pode ser no passado!", cancel_keyboard)
+                send_message(chat_id, "A data não pode ser no passado!", cancel_keyboard)
                 return
 
             data["departure_date"] = date.strftime("%Y-%m-%d")
             next_state = "return_date" if state == "departure_date" else "search_return_date"
 
             keyboard = {"inline_keyboard": [
-                [{"text": "So ida (sem volta)", "callback_data": "skip_return"}],
+                [{"text": "Só ida (sem volta)", "callback_data": "skip_return"}],
                 [{"text": "Cancelar", "callback_data": "main_menu"}]
             ]}
 
             redis_set(f"state:{user_id}", {"state": next_state, "data": data})
             send_message(chat_id, f"Data de ida: *{text}*\n\nDigite a data de volta (DD/MM/AAAA):", keyboard)
-        except:
-            send_message(chat_id, "Formato invalido. Use DD/MM/AAAA", cancel_keyboard)
+        except ValueError:
+            send_message(chat_id, "Formato inválido. Use DD/MM/AAAA", cancel_keyboard)
 
     # Data de volta
     elif state in ["return_date", "search_return_date"]:
@@ -243,7 +287,7 @@ def handle_message(message):
             date = datetime.strptime(text, "%d/%m/%Y")
             departure = datetime.strptime(data["departure_date"], "%Y-%m-%d")
             if date.date() < departure.date():
-                send_message(chat_id, "A volta deve ser apos a ida!", cancel_keyboard)
+                send_message(chat_id, "A volta deve ser após a ida!", cancel_keyboard)
                 return
 
             data["return_date"] = date.strftime("%Y-%m-%d")
@@ -257,23 +301,23 @@ def handle_message(message):
 
             redis_set(f"state:{user_id}", {"state": next_state, "data": data})
             send_message(chat_id, "*Quantos adultos?*", keyboard)
-        except:
-            send_message(chat_id, "Formato invalido. Use DD/MM/AAAA", cancel_keyboard)
+        except ValueError:
+            send_message(chat_id, "Formato inválido. Use DD/MM/AAAA", cancel_keyboard)
 
-    # Preco maximo
+    # Preço máximo
     elif state == "max_price":
         try:
             max_price = float(text.replace(",", ".").replace("R$", "").strip())
             if max_price <= 0:
-                raise ValueError()
+                raise ValueError("Preço deve ser positivo")
             data["max_price"] = max_price
             finish_monitor(chat_id, user_id, data)
-        except:
-            send_message(chat_id, "Valor invalido. Digite apenas numeros (ex: 1500)", cancel_keyboard)
+        except ValueError:
+            send_message(chat_id, "Valor inválido. Digite apenas números (ex: 1500)", cancel_keyboard)
 
 
 def handle_callback(callback_query):
-    """Processa cliques em botoes."""
+    """Processa cliques em botões."""
     chat_id = callback_query["message"]["chat"]["id"]
     user_id = callback_query["from"]["id"]
     callback_id = callback_query["id"]
@@ -305,13 +349,13 @@ def handle_callback(callback_query):
                 [{"text": "Criar Monitoramento", "callback_data": "new_monitor"}],
                 [{"text": "Menu Principal", "callback_data": "main_menu"}]
             ]}
-            send_message(chat_id, "*Meus Monitoramentos*\n\nVoce nao tem monitoramentos ativos.", keyboard)
+            send_message(chat_id, "*Meus Monitoramentos*\n\nVocê não tem monitoramentos ativos.", keyboard)
             return
 
         text = "*Meus Monitoramentos*\n\n"
         keyboard_buttons = []
         for i, m in enumerate(monitors):
-            text += f"*{m['origin']} -> {m['destination']}*\n"
+            text += f"*{m['origin']} → {m['destination']}*\n"
             text += f"  Data: {m['departure_date']}\n\n"
             keyboard_buttons.append([{"text": f"Excluir #{i+1}", "callback_data": f"delete_{i}"}])
 
@@ -328,8 +372,8 @@ def handle_callback(callback_query):
 5. Receba alertas!
 
 *Dicas:*
-- Digite o nome da cidade (ex: Sao Paulo)
-- O bot mostra os aeroportos disponiveis"""
+- Digite o nome da cidade (ex: São Paulo)
+- O bot mostra os aeroportos disponíveis"""
         keyboard = {"inline_keyboard": [[{"text": "Menu Principal", "callback_data": "main_menu"}]]}
         send_message(chat_id, help_text, keyboard)
 
@@ -383,23 +427,23 @@ def handle_callback(callback_query):
                 keyboard = {"inline_keyboard": [[{"text": "Menu Principal", "callback_data": "main_menu"}]]}
                 send_message(chat_id, "*Nenhum voo encontrado*\n\nTente outras datas.", keyboard)
             else:
-                text = f"*Voos: {data.get('origin_name', data['origin'])} -> {data.get('destination_name', data['destination'])}*\n\n"
+                text = f"*Voos: {data.get('origin_name', data['origin'])} → {data.get('destination_name', data['destination'])}*\n\n"
                 for i, o in enumerate(offers, 1):
                     stops = "Direto" if o["stops"] == 0 else f"{o['stops']} parada(s)"
-                    text += f"*{i}. R$ {o['price']:,.2f}*\n   {o['airline']} | {stops}\n\n"
+                    text += f"*{i}. {format_brl(o['price'])}*\n   {o['airline']} | {stops}\n\n"
 
                 keyboard = {"inline_keyboard": [[{"text": "Menu Principal", "callback_data": "main_menu"}]]}
                 send_message(chat_id, text, keyboard)
 
             redis_set(f"state:{user_id}", None)
         else:
-            # Perguntar preco maximo
+            # Perguntar preço máximo
             keyboard = {"inline_keyboard": [
                 [{"text": "Pular (sem limite)", "callback_data": "skip_max_price"}],
                 [{"text": "Cancelar", "callback_data": "main_menu"}]
             ]}
             redis_set(f"state:{user_id}", {"state": "max_price", "data": data})
-            send_message(chat_id, "*Preco maximo?*\n\nDigite o valor em reais ou pule:", keyboard)
+            send_message(chat_id, "*Preço máximo?*\n\nDigite o valor em reais ou pule:", keyboard)
 
     elif action == "skip_max_price":
         data["max_price"] = None
@@ -413,11 +457,11 @@ def handle_callback(callback_query):
             redis_set(f"monitors:{user_id}", monitors)
 
         keyboard = {"inline_keyboard": [[{"text": "Menu Principal", "callback_data": "main_menu"}]]}
-        send_message(chat_id, "Monitoramento excluido!", keyboard)
+        send_message(chat_id, "Monitoramento excluído!", keyboard)
 
 
 def finish_monitor(chat_id, user_id, data):
-    """Finaliza criacao do monitoramento."""
+    """Finaliza criação do monitoramento."""
     monitors = redis_get(f"monitors:{user_id}") or []
     monitors.append({
         "origin": data["origin"],
@@ -436,15 +480,15 @@ def finish_monitor(chat_id, user_id, data):
 
     text = f"""*Monitoramento Criado!*
 
-Rota: *{data.get('origin_name', data['origin'])} -> {data.get('destination_name', data['destination'])}*
+Rota: *{data.get('origin_name', data['origin'])} → {data.get('destination_name', data['destination'])}*
 Ida: {data['departure_date']}"""
 
     if data.get("return_date"):
         text += f"\nVolta: {data['return_date']}"
     if data.get("max_price"):
-        text += f"\nAlerta quando < R$ {data['max_price']:,.2f}"
+        text += f"\nAlerta quando < {format_brl(data['max_price'])}"
 
-    text += "\n\n_Voce recebera alertas quando o preco baixar!_"
+    text += "\n\n_Você receberá alertas quando o preço baixar!_"
 
     keyboard = {"inline_keyboard": [[{"text": "Menu Principal", "callback_data": "main_menu"}]]}
     send_message(chat_id, text, keyboard)
@@ -452,7 +496,13 @@ Ida: {data['departure_date']}"""
 
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
+        # Limitar tamanho do request (máx 64KB)
         content_length = int(self.headers.get('Content-Length', 0))
+        if content_length > 65536:
+            self.send_response(413)
+            self.end_headers()
+            return
+
         body = self.rfile.read(content_length)
 
         try:
@@ -462,8 +512,13 @@ class handler(BaseHTTPRequestHandler):
                 handle_message(update["message"])
             elif "callback_query" in update:
                 handle_callback(update["callback_query"])
+
+        except json.JSONDecodeError as e:
+            print(f"JSON decode error: {e}")
+        except KeyError as e:
+            print(f"Missing key error: {e}")
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Unexpected error: {e}")
 
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
@@ -474,4 +529,7 @@ class handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
         self.end_headers()
-        self.wfile.write(json.dumps({"status": "Bot is running!"}).encode())
+        self.wfile.write(json.dumps({
+            "status": "Bot is running!",
+            "timestamp": datetime.now().isoformat()
+        }).encode())

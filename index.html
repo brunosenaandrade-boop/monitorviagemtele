@@ -1067,14 +1067,32 @@
         const mainContent = document.getElementById('main-content');
         const successSection = document.getElementById('success-section');
         const toast = document.getElementById('toast');
+        const originalBtnText = submitBtn.innerHTML;
+        let isSubmitting = false;
+
+        function resetButton() {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnText;
+            isSubmitting = false;
+        }
+
+        function showError(message) {
+            alert(message);
+            resetButton();
+        }
 
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
 
+            // Prevenir duplo clique
+            if (isSubmitting) return;
+            isSubmitting = true;
+
             const whatsapp = phoneInput.value.replace(/\D/g, '');
 
-            if (whatsapp.length < 10) {
-                alert('Por favor, digite um número de WhatsApp válido.');
+            // Validação corrigida: mínimo 11 dígitos para BR
+            if (whatsapp.length < 11) {
+                showError('Por favor, digite um número de WhatsApp válido com DDD.');
                 return;
             }
 
@@ -1082,30 +1100,36 @@
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<div class="spinner"></div> Liberando seu acesso...';
 
-            // Save lead to Google Sheets
+            // Save lead via backend API (mais seguro)
             try {
-                await fetch('https://script.google.com/macros/s/AKfycbxk5Lir91KwIZ3IRu3J57CmB9UHknyYhdv7gTHApE-jmtT82NPrqCm1wacQFIkZ4pFbEw/exec', {
+                const response = await fetch('/api/leads', {
                     method: 'POST',
-                    mode: 'no-cors',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({ whatsapp: phoneInput.value })
                 });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Erro ao salvar');
+                }
+
+                // Show success
+                mainContent.style.display = 'none';
+                successSection.style.display = 'block';
+
+                // Show toast
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 4000);
+
+                // Scroll to top
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+
             } catch (error) {
-                console.log('Lead saved');
+                console.error('Error:', error);
+                showError('Ocorreu um erro. Por favor, tente novamente.');
             }
-
-            // Show success
-            mainContent.style.display = 'none';
-            successSection.style.display = 'block';
-
-            // Show toast
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 4000);
-
-            // Scroll to top
-            window.scrollTo({ top: 0, behavior: 'smooth' });
         });
     </script>
 </body>

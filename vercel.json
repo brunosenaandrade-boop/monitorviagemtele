@@ -8,12 +8,20 @@
     {
       "src": "api/webhook.py",
       "use": "@vercel/python"
+    },
+    {
+      "src": "api/leads.py",
+      "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/api/webhook",
       "dest": "/api/webhook.py"
+    },
+    {
+      "src": "/api/leads",
+      "dest": "/api/leads.py"
     },
     {
       "src": "/",
