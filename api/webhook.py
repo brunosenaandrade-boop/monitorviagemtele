@@ -210,7 +210,18 @@ def search_flights(origin, destination, departure_date, return_date=None, adults
         print("Travelpayouts token not configured")
         return []
 
-    # Converter data de YYYY-MM-DD para formato da API
+    # Primeiro tenta busca por data específica
+    offers = search_flights_by_date(origin, destination, departure_date, return_date, adults)
+
+    # Se não encontrou, tenta preços mais baratos (cache geral)
+    if not offers:
+        offers = search_cheap_prices(origin, destination, adults)
+
+    return offers
+
+
+def search_flights_by_date(origin, destination, departure_date, return_date=None, adults=1):
+    """Busca voos por data específica."""
     params = {
         "origin": origin,
         "destination": destination,
@@ -228,19 +239,15 @@ def search_flights(origin, destination, departure_date, return_date=None, adults
     url = f"{TRAVELPAYOUTS_BASE_URL}/aviasales/v3/prices_for_dates?{query_string}"
 
     try:
-        req = urllib.request.Request(url, headers={
-            "X-Access-Token": TRAVELPAYOUTS_TOKEN
-        })
+        req = urllib.request.Request(url)
         with urllib.request.urlopen(req, timeout=30) as response:
             data = json.loads(response.read().decode())
 
             if not data.get("success"):
-                print(f"Travelpayouts API error: {data}")
                 return []
 
             offers = []
             for flight in data.get("data", [])[:5]:
-                # Preço é por pessoa, multiplicar por adultos
                 price_per_person = float(flight.get("price", 0))
                 total_price = price_per_person * adults
 
@@ -250,16 +257,54 @@ def search_flights(origin, destination, departure_date, return_date=None, adults
                     "stops": flight.get("transfers", 0),
                     "departure": flight.get("departure_at", ""),
                     "return": flight.get("return_at", ""),
-                    "link": flight.get("link", "")
                 })
 
             return sorted(offers, key=lambda x: x["price"])
 
-    except urllib.error.URLError as e:
-        print(f"Flight search error: {e}")
+    except (urllib.error.URLError, json.JSONDecodeError) as e:
+        print(f"Flight search by date error: {e}")
         return []
-    except json.JSONDecodeError as e:
-        print(f"JSON decode error: {e}")
+
+
+def search_cheap_prices(origin, destination, adults=1):
+    """Busca preços mais baratos em cache (fallback)."""
+    params = {
+        "origin": origin,
+        "destination": destination,
+        "currency": "brl",
+        "token": TRAVELPAYOUTS_TOKEN
+    }
+
+    query_string = urllib.parse.urlencode(params)
+    url = f"{TRAVELPAYOUTS_BASE_URL}/v1/prices/cheap?{query_string}"
+
+    try:
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req, timeout=30) as response:
+            data = json.loads(response.read().decode())
+
+            if not data.get("success"):
+                return []
+
+            offers = []
+            dest_data = data.get("data", {}).get(destination, {})
+
+            for key, flight in list(dest_data.items())[:5]:
+                price_per_person = float(flight.get("price", 0))
+                total_price = price_per_person * adults
+
+                offers.append({
+                    "price": total_price,
+                    "airline": flight.get("airline", "N/A"),
+                    "stops": flight.get("transfers", 0),
+                    "departure": flight.get("departure_date", ""),
+                    "return": flight.get("return_date", ""),
+                })
+
+            return sorted(offers, key=lambda x: x["price"])
+
+    except (urllib.error.URLError, json.JSONDecodeError) as e:
+        print(f"Cheap prices search error: {e}")
         return []
 
 
