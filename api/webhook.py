@@ -3,27 +3,19 @@ import json
 import os
 import urllib.request
 import urllib.parse
-import hashlib
-import hmac
 from datetime import datetime
 
 # Configurações
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
-TELEGRAM_SECRET = os.environ.get('TELEGRAM_WEBHOOK_SECRET', '')  # Opcional
-AMADEUS_KEY = os.environ.get('AMADEUS_API_KEY', '')
-AMADEUS_SECRET = os.environ.get('AMADEUS_API_SECRET', '')
 UPSTASH_URL = os.environ.get('UPSTASH_REDIS_REST_URL', '')
 UPSTASH_TOKEN = os.environ.get('UPSTASH_REDIS_REST_TOKEN', '')
 
-# Amadeus: 'test' ou 'production'
-AMADEUS_ENV = os.environ.get('AMADEUS_ENV', 'test')
-AMADEUS_BASE_URL = 'https://api.amadeus.com' if AMADEUS_ENV == 'production' else 'https://test.api.amadeus.com'
+# Travelpayouts API
+TRAVELPAYOUTS_TOKEN = os.environ.get('TRAVELPAYOUTS_TOKEN', '')
+TRAVELPAYOUTS_BASE_URL = 'https://api.travelpayouts.com'
 
 # Timeout padrão para requisições HTTP (10 segundos)
 HTTP_TIMEOUT = 10
-
-# Cache do token Amadeus (em memória por execução)
-_amadeus_token_cache = {"token": None, "expires_at": 0}
 
 # Base de aeroportos brasileiros (fallback para API de teste limitada)
 BRAZILIAN_AIRPORTS = [
@@ -207,100 +199,67 @@ def answer_callback(callback_id):
         pass  # Não crítico
 
 
-def get_amadeus_token():
-    """Obtém token da API Amadeus com cache."""
-    global _amadeus_token_cache
-
-    # Verificar cache
-    now = datetime.now().timestamp()
-    if _amadeus_token_cache["token"] and _amadeus_token_cache["expires_at"] > now:
-        return _amadeus_token_cache["token"]
-
-    url = f"{AMADEUS_BASE_URL}/v1/security/oauth2/token"
-    data = urllib.parse.urlencode({
-        "grant_type": "client_credentials",
-        "client_id": AMADEUS_KEY,
-        "client_secret": AMADEUS_SECRET
-    }).encode()
-    req = urllib.request.Request(url, data=data)
-
-    try:
-        with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as response:
-            result = json.loads(response.read().decode())
-            token = result.get("access_token")
-            expires_in = result.get("expires_in", 1800)  # Padrão 30 min
-
-            # Cachear com margem de 60 segundos
-            _amadeus_token_cache = {
-                "token": token,
-                "expires_at": now + expires_in - 60
-            }
-            return token
-    except urllib.error.URLError as e:
-        print(f"Amadeus token error: {e}")
-        return None
-
-
 def search_airports(keyword):
-    """Busca aeroportos - primeiro na base local, depois na API."""
-    # Primeiro tenta a base local (mais rápida e completa para BR)
-    local_results = search_local_airports(keyword)
-    if local_results:
-        return local_results
-
-    # Se não encontrou localmente, tenta a API Amadeus
-    token = get_amadeus_token()
-    if not token:
-        return []
-
-    url = f"{AMADEUS_BASE_URL}/v1/reference-data/locations?keyword={urllib.parse.quote(keyword)}&subType=AIRPORT,CITY"
-    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
-
-    try:
-        with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as response:
-            data = json.loads(response.read().decode())
-            results = [
-                {
-                    "code": loc["iataCode"],
-                    "name": loc.get("name", ""),
-                    "city": loc.get("address", {}).get("cityName", "")
-                }
-                for loc in data.get("data", [])[:5]
-            ]
-            return results if results else []
-    except urllib.error.URLError as e:
-        print(f"Airport search error: {e}")
-        return []
+    """Busca aeroportos na base local."""
+    return search_local_airports(keyword)
 
 
 def search_flights(origin, destination, departure_date, return_date=None, adults=1):
-    """Busca voos."""
-    token = get_amadeus_token()
-    if not token:
+    """Busca voos usando Travelpayouts API."""
+    if not TRAVELPAYOUTS_TOKEN:
+        print("Travelpayouts token not configured")
         return []
 
-    params = f"originLocationCode={origin}&destinationLocationCode={destination}&departureDate={departure_date}&adults={adults}&currencyCode=BRL&max=5"
-    if return_date:
-        params += f"&returnDate={return_date}"
+    # Converter data de YYYY-MM-DD para formato da API
+    params = {
+        "origin": origin,
+        "destination": destination,
+        "departure_at": departure_date,
+        "currency": "brl",
+        "sorting": "price",
+        "limit": 10,
+        "token": TRAVELPAYOUTS_TOKEN
+    }
 
-    url = f"{AMADEUS_BASE_URL}/v2/shopping/flight-offers?{params}"
-    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+    if return_date:
+        params["return_at"] = return_date
+
+    query_string = urllib.parse.urlencode(params)
+    url = f"{TRAVELPAYOUTS_BASE_URL}/aviasales/v3/prices_for_dates?{query_string}"
 
     try:
-        with urllib.request.urlopen(req, timeout=30) as response:  # Timeout maior para busca
+        req = urllib.request.Request(url, headers={
+            "X-Access-Token": TRAVELPAYOUTS_TOKEN
+        })
+        with urllib.request.urlopen(req, timeout=30) as response:
             data = json.loads(response.read().decode())
+
+            if not data.get("success"):
+                print(f"Travelpayouts API error: {data}")
+                return []
+
             offers = []
-            for offer in data.get("data", [])[:5]:
-                price = float(offer["price"]["total"])
-                segment = offer["itineraries"][0]["segments"][0]
+            for flight in data.get("data", [])[:5]:
+                # Preço é por pessoa, multiplicar por adultos
+                price_per_person = float(flight.get("price", 0))
+                total_price = price_per_person * adults
+
                 offers.append({
-                    "price": price,
-                    "airline": segment["carrierCode"],
-                    "stops": len(offer["itineraries"][0]["segments"]) - 1
+                    "price": total_price,
+                    "airline": flight.get("airline", "N/A"),
+                    "stops": flight.get("transfers", 0),
+                    "departure": flight.get("departure_at", ""),
+                    "return": flight.get("return_at", ""),
+                    "link": flight.get("link", "")
                 })
+
             return sorted(offers, key=lambda x: x["price"])
+
     except urllib.error.URLError as e:
         print(f"Flight search error: {e}")
+        return []
+    except json.JSONDecodeError as e:
+        print(f"JSON decode error: {e}")
         return []
 
 
@@ -544,13 +503,22 @@ def handle_callback(callback_query):
 
             if not offers:
                 keyboard = {"inline_keyboard": [[{"text": "Menu Principal", "callback_data": "main_menu"}]]}
-                send_message(chat_id, "*Nenhum voo encontrado*\n\nTente outras datas.", keyboard)
+                send_message(chat_id, "*Nenhum voo encontrado*\n\nTente outras datas ou destinos.", keyboard)
             else:
                 text = f"*Voos: {data.get('origin_name', data['origin'])} → {data.get('destination_name', data['destination'])}*\n\n"
                 for i, o in enumerate(offers, 1):
                     stops = "Direto" if o["stops"] == 0 else f"{o['stops']} parada(s)"
-                    text += f"*{i}. {format_brl(o['price'])}*\n   {o['airline']} | {stops}\n\n"
+                    text += f"*{i}. {format_brl(o['price'])}*\n"
+                    text += f"   {o['airline']} | {stops}\n"
+                    if o.get("departure"):
+                        dep_date = o["departure"][:10] if o["departure"] else ""
+                        text += f"   Ida: {dep_date}\n"
+                    if o.get("return"):
+                        ret_date = o["return"][:10] if o["return"] else ""
+                        text += f"   Volta: {ret_date}\n"
+                    text += "\n"
 
+                text += "_Preços em cache (podem variar)_"
                 keyboard = {"inline_keyboard": [[{"text": "Menu Principal", "callback_data": "main_menu"}]]}
                 send_message(chat_id, text, keyboard)
 
