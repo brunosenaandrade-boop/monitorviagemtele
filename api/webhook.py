@@ -308,6 +308,59 @@ def search_cheap_prices(origin, destination, adults=1):
         return []
 
 
+def check_route_has_data(origin, destination):
+    """Verifica se existe dados para a rota."""
+    if not TRAVELPAYOUTS_TOKEN:
+        return False, []
+
+    params = {
+        "origin": origin,
+        "destination": destination,
+        "currency": "brl",
+        "token": TRAVELPAYOUTS_TOKEN
+    }
+
+    query_string = urllib.parse.urlencode(params)
+    url = f"{TRAVELPAYOUTS_BASE_URL}/v1/prices/cheap?{query_string}"
+
+    try:
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req, timeout=15) as response:
+            data = json.loads(response.read().decode())
+            has_data = bool(data.get("data", {}).get(destination))
+            return has_data, []
+    except:
+        return False, []
+
+
+def get_alternative_destinations(origin):
+    """Busca destinos alternativos com dados disponíveis."""
+    if not TRAVELPAYOUTS_TOKEN:
+        return []
+
+    url = f"{TRAVELPAYOUTS_BASE_URL}/v2/prices/latest?origin={origin}&currency=brl&limit=10&token={TRAVELPAYOUTS_TOKEN}"
+
+    try:
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req, timeout=15) as response:
+            data = json.loads(response.read().decode())
+            destinations = []
+            for flight in data.get("data", [])[:6]:
+                dest_code = flight.get("destination", "")
+                # Buscar nome do aeroporto
+                for airport in ALL_AIRPORTS:
+                    if airport["code"] == dest_code:
+                        destinations.append({
+                            "code": dest_code,
+                            "city": airport["city"],
+                            "price": flight.get("value", 0)
+                        })
+                        break
+            return destinations
+    except:
+        return []
+
+
 def format_brl(value):
     """Formata valor em Real brasileiro (R$ 1.234,56)."""
     return f"R$ {value:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
@@ -682,9 +735,53 @@ def handle_callback(callback_query):
         dest_name = data.get("destination_name", data.get("destination", ""))
         send_message(chat_id, f"*{origin_name} → {dest_name}*\n\nDigite uma nova data de ida (DD/MM/AAAA):", keyboard)
 
+    elif action == "confirm_monitor":
+        # Usuário confirmou criar monitor mesmo sem dados
+        create_monitor(chat_id, user_id, data)
+
 
 def finish_monitor(chat_id, user_id, data):
     """Finaliza criação do monitoramento."""
+    origin = data["origin"]
+    destination = data["destination"]
+
+    # Verificar se a rota tem dados disponíveis
+    has_data, _ = check_route_has_data(origin, destination)
+
+    if not has_data:
+        # Rota sem dados - avisar o usuário
+        alternatives = get_alternative_destinations(origin)
+
+        text = f"""*Atenção: Rota com dados limitados*
+
+A rota *{data.get('origin_name', origin)} → {data.get('destination_name', destination)}* não possui dados de preços em nosso sistema.
+
+Isso acontece porque é uma rota menos buscada. O monitoramento pode não funcionar corretamente."""
+
+        if alternatives:
+            text += "\n\n*Destinos alternativos com dados:*\n"
+            for alt in alternatives[:4]:
+                text += f"• {alt['city']} ({alt['code']}): R$ {alt['price']}\n"
+
+        text += "\n*Sugestão:* Use o Google Flights para monitorar esta rota específica."
+
+        keyboard = {"inline_keyboard": [
+            [{"text": "Criar mesmo assim", "callback_data": "confirm_monitor"}],
+            [{"text": "Escolher outro destino", "callback_data": "new_monitor"}],
+            [{"text": "Menu Principal", "callback_data": "main_menu"}]
+        ]}
+
+        # Salvar dados para confirmar depois
+        redis_set(f"state:{user_id}", {"state": "confirm_monitor", "data": data})
+        send_message(chat_id, text, keyboard)
+        return
+
+    # Rota com dados - criar normalmente
+    create_monitor(chat_id, user_id, data)
+
+
+def create_monitor(chat_id, user_id, data):
+    """Cria o monitoramento no banco."""
     monitors = redis_get(f"monitors:{user_id}") or []
     monitors.append({
         "origin": data["origin"],
