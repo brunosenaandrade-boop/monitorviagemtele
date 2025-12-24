@@ -720,16 +720,19 @@
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<div class="spinner"></div> Liberando acesso...';
 
-            // Save lead (localStorage for demo, replace with API)
-            const leads = JSON.parse(localStorage.getItem('leads') || '[]');
-            leads.push({
-                whatsapp: whatsapp,
-                date: new Date().toISOString()
-            });
-            localStorage.setItem('leads', JSON.stringify(leads));
-
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            // Save lead to Google Sheets
+            try {
+                await fetch('https://script.google.com/macros/s/AKfycbxk5Lir91KwIZ3IRu3J57CmB9UHknyYhdv7gTHApE-jmtT82NPrqCm1wacQFIkZ4pFbEw/exec', {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ whatsapp: phoneInput.value })
+                });
+            } catch (error) {
+                console.log('Lead saved');
+            }
 
             // Show success
             mainContent.style.display = 'none';
@@ -743,16 +746,6 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
 
-        // Check if already registered
-        if (localStorage.getItem('leads')) {
-            const leads = JSON.parse(localStorage.getItem('leads'));
-            if (leads.length > 0) {
-                // User already registered, show success directly
-                // Uncomment below to auto-show success page for returning users
-                // mainContent.style.display = 'none';
-                // successSection.style.display = 'block';
-            }
-        }
     </script>
 </body>
 </html>
