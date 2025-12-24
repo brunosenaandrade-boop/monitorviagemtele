@@ -1,160 +1,68 @@
-# Monitor de Viagens - Telegram Bot
+# Monitor de Viagens
 
-Bot do Telegram para monitorar preços de passagens aéreas e receber alertas quando os preços caírem.
+Bot do Telegram para monitorar preços de passagens aéreas com landing page de captura de leads.
 
-## Funcionalidades
+## Stack
 
-- Criar monitoramentos de voos (origem, destino, datas)
-- Buscar voos em tempo real
-- Receber alertas quando o preço cair
-- Definir preço máximo para alertas
-- Histórico de preços
-- Interface 100% pelo Telegram (botões interativos)
-
-## Configuração
-
-### 1. Criar Bot no Telegram
-
-1. Abra o Telegram e busque por `@BotFather`
-2. Envie `/newbot`
-3. Siga as instruções e copie o **token** gerado
-
-### 2. Criar conta na Amadeus (API de Voos)
-
-1. Acesse [developers.amadeus.com](https://developers.amadeus.com)
-2. Crie uma conta gratuita
-3. Crie um novo app em "My Self-Service Workspace"
-4. Copie a **API Key** e **API Secret**
-
-> O plano gratuito permite 500 requisições/mês (suficiente para uso pessoal)
-
-### 3. Configurar Variáveis de Ambiente
-
-Copie o arquivo de exemplo e preencha:
-
-```bash
-cp .env.example .env
-```
-
-Edite o `.env`:
-
-```
-TELEGRAM_BOT_TOKEN=seu_token_do_botfather
-AMADEUS_API_KEY=sua_api_key
-AMADEUS_API_SECRET=seu_api_secret
-CHECK_INTERVAL_MINUTES=60
-```
-
-### 4. Instalar Dependências
-
-```bash
-pip install -r requirements.txt
-```
-
-### 5. Rodar o Bot
-
-```bash
-python bot.py
-```
-
-## Uso
-
-1. Abra o Telegram e busque pelo seu bot
-2. Envie `/start`
-3. Use os botões para:
-   - **Novo Monitoramento**: Criar alerta de preço
-   - **Meus Monitoramentos**: Ver alertas ativos
-   - **Buscar Voo Agora**: Pesquisa rápida de preços
-
-### Fluxo de Monitoramento
-
-```
-1. Escolher origem (ex: GRU)
-2. Escolher destino (ex: MIA)
-3. Data de ida (ex: 25/12/2024)
-4. Data de volta (opcional)
-5. Quantidade de adultos
-6. Preço máximo (opcional)
-```
-
-## Códigos de Aeroportos
-
-### Brasil
-| Código | Cidade |
-|--------|--------|
-| GRU | São Paulo - Guarulhos |
-| CGH | São Paulo - Congonhas |
-| GIG | Rio de Janeiro - Galeão |
-| SDU | Rio de Janeiro - Santos Dumont |
-| BSB | Brasília |
-| CNF | Belo Horizonte - Confins |
-| SSA | Salvador |
-| REC | Recife |
-| FOR | Fortaleza |
-| POA | Porto Alegre |
-| CWB | Curitiba |
-| FLN | Florianópolis |
-
-### Internacionais Populares
-| Código | Cidade |
-|--------|--------|
-| MIA | Miami |
-| MCO | Orlando |
-| JFK | New York - JFK |
-| EWR | New York - Newark |
-| LIS | Lisboa |
-| OPO | Porto |
-| MAD | Madrid |
-| BCN | Barcelona |
-| CDG | Paris |
-| FCO | Roma |
-| LHR | Londres |
-| AMS | Amsterdam |
-| DXB | Dubai |
-| BUE | Buenos Aires |
-| SCL | Santiago |
-
-## Deploy Gratuito
-
-### Opção 1: Railway
-1. Crie conta em [railway.app](https://railway.app)
-2. Conecte seu repositório GitHub
-3. Configure as variáveis de ambiente
-4. Deploy automático!
-
-### Opção 2: Render
-1. Crie conta em [render.com](https://render.com)
-2. Crie um "Background Worker"
-3. Configure as variáveis de ambiente
-4. Deploy!
-
-### Opção 3: Rodar Local (sempre ligado)
-Use `tmux` ou `screen` para manter rodando:
-
-```bash
-screen -S flightbot
-python bot.py
-# Ctrl+A, D para sair sem parar
-```
+- **Frontend:** Landing page HTML/CSS/JS
+- **Backend:** Vercel Serverless Functions (Python)
+- **Bot:** Telegram Bot API (Webhook)
+- **Database:** Upstash Redis
+- **API de Voos:** Amadeus
 
 ## Estrutura do Projeto
 
 ```
-flight-monitor/
-├── bot.py              # Bot principal do Telegram
-├── database.py         # Funções do banco de dados SQLite
-├── flight_service.py   # Integração com API Amadeus
+├── index.html          # Landing page de captura de leads
+├── api/
+│   └── webhook.py      # Bot do Telegram (serverless)
+├── vercel.json         # Configuração do Vercel
 ├── requirements.txt    # Dependências Python
-├── .env.example        # Exemplo de configuração
-└── README.md           # Este arquivo
+└── README.md           # Documentação
 ```
 
-## Limitações
+## Funcionalidades
 
-- API Amadeus gratuita: 500 requisições/mês
-- Verificação padrão: a cada 60 minutos
-- Busca máxima: 5 voos por pesquisa
+### Landing Page
+- Design moderno e responsivo
+- Captura de leads (WhatsApp)
+- Integração com Google Sheets
+- Elementos de alta conversão
+
+### Bot Telegram
+- Busca de aeroportos por nome da cidade
+- Pesquisa de voos em tempo real
+- Criação de monitoramentos
+- Alertas de preço
+
+## URLs
+
+- **Landing Page:** https://viagem.seumotoristavip.com.br
+- **Bot Telegram:** @meu_monitor_viagens_bot
+
+## Variáveis de Ambiente
+
+Configure no Vercel:
+
+```
+TELEGRAM_BOT_TOKEN=seu_token
+AMADEUS_API_KEY=sua_key
+AMADEUS_API_SECRET=seu_secret
+UPSTASH_REDIS_REST_URL=sua_url
+UPSTASH_REDIS_REST_TOKEN=seu_token
+```
+
+## APIs Utilizadas
+
+- [Telegram Bot API](https://core.telegram.org/bots/api)
+- [Amadeus Flight API](https://developers.amadeus.com)
+- [Upstash Redis](https://upstash.com)
+- [Google Sheets API](https://developers.google.com/sheets)
+
+## Deploy
+
+O projeto está hospedado no Vercel com deploy automático via GitHub.
 
 ## Licença
 
-MIT - Use como quiser!
+MIT
