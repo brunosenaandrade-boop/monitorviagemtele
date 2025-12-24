@@ -317,29 +317,106 @@ def main_menu(chat_id):
     """Mostra menu principal."""
     keyboard = {
         "inline_keyboard": [
+            [{"text": "Buscar Voo Agora", "callback_data": "search_now"}],
             [{"text": "Novo Monitoramento", "callback_data": "new_monitor"}],
             [{"text": "Meus Monitoramentos", "callback_data": "my_monitors"}],
-            [{"text": "Buscar Voo Agora", "callback_data": "search_now"}],
             [{"text": "Ajuda", "callback_data": "help"}]
         ]
     }
     send_message(chat_id, "*Monitor de Viagens*\n\nEscolha uma opção:", keyboard)
 
 
+def handle_my_monitors(chat_id, user_id):
+    """Mostra monitoramentos do usuário."""
+    monitors = redis_get(f"monitors:{user_id}") or []
+    if not monitors:
+        keyboard = {"inline_keyboard": [
+            [{"text": "Criar Monitoramento", "callback_data": "new_monitor"}],
+            [{"text": "Buscar Voo", "callback_data": "search_now"}],
+            [{"text": "Menu Principal", "callback_data": "main_menu"}]
+        ]}
+        send_message(chat_id, "*Meus Monitoramentos*\n\nVocê não tem monitoramentos ativos.", keyboard)
+        return
+
+    text = "*Meus Monitoramentos*\n\n"
+    keyboard_buttons = []
+    for i, m in enumerate(monitors):
+        text += f"*{i+1}. {m['origin']} → {m['destination']}*\n"
+        text += f"   Data: {m['departure_date']}\n\n"
+        keyboard_buttons.append([{"text": f"Excluir #{i+1}", "callback_data": f"delete_{i}"}])
+
+    keyboard_buttons.append([{"text": "Criar Novo", "callback_data": "new_monitor"}])
+    keyboard_buttons.append([{"text": "Menu Principal", "callback_data": "main_menu"}])
+    send_message(chat_id, text, {"inline_keyboard": keyboard_buttons})
+
+
+def handle_help(chat_id):
+    """Mostra ajuda."""
+    help_text = """*Como usar o bot:*
+
+*Buscar Voo* - Pesquisa preços agora
+*Monitoramento* - Receba alertas de preço
+
+*Comandos:*
+/buscar - Buscar voo
+/monitorar - Criar alerta
+/meus - Ver meus alertas
+/menu - Menu principal
+
+*Dicas:*
+- Digite o nome da cidade (ex: São Paulo)
+- Preços são atualizados diariamente"""
+    keyboard = {"inline_keyboard": [
+        [{"text": "Buscar Voo", "callback_data": "search_now"}],
+        [{"text": "Menu Principal", "callback_data": "main_menu"}]
+    ]}
+    send_message(chat_id, help_text, keyboard)
+
+
 def handle_message(message):
     """Processa mensagens de texto."""
     chat_id = message["chat"]["id"]
     user_id = message["from"]["id"]
-    text = message.get("text", "").strip()
+    text = message.get("text", "").strip().lower()
 
-    if text == "/start":
+    # Comandos principais
+    if text in ["/start", "/inicio", "/menu", "/home"]:
         redis_set(f"state:{user_id}", None)
         main_menu(chat_id)
         return
 
+    if text in ["/buscar", "/busca", "/search"]:
+        redis_set(f"state:{user_id}", {"state": "search_origin", "data": {"mode": "search"}})
+        keyboard = {"inline_keyboard": [[{"text": "Menu Principal", "callback_data": "main_menu"}]]}
+        send_message(chat_id, "*Buscar Voo*\n\nDigite o nome da cidade de origem:", keyboard)
+        return
+
+    if text in ["/monitorar", "/monitor", "/novo"]:
+        redis_set(f"state:{user_id}", {"state": "origin", "data": {}})
+        keyboard = {"inline_keyboard": [[{"text": "Menu Principal", "callback_data": "main_menu"}]]}
+        send_message(chat_id, "*Novo Monitoramento*\n\nDigite o nome da cidade de origem:", keyboard)
+        return
+
+    if text in ["/meus", "/meusmonitoramentos", "/lista"]:
+        handle_my_monitors(chat_id, user_id)
+        return
+
+    if text in ["/ajuda", "/help"]:
+        handle_help(chat_id)
+        return
+
+    # Restaurar texto original para processamento
+    text = message.get("text", "").strip()
+
     state_data = redis_get(f"state:{user_id}")
     if not state_data:
-        send_message(chat_id, "Use /start para começar!")
+        # Mostra menu com botões em vez de pedir /start
+        keyboard = {"inline_keyboard": [
+            [{"text": "Buscar Voo", "callback_data": "search_now"}],
+            [{"text": "Criar Monitoramento", "callback_data": "new_monitor"}],
+            [{"text": "Menu Principal", "callback_data": "main_menu"}]
+        ]}
+        send_message(chat_id, "O que deseja fazer?", keyboard)
         return
 
     state = state_data.get("state", "")
@@ -351,7 +428,11 @@ def handle_message(message):
     if state in ["origin", "search_origin"]:
         airports = search_airports(text)
         if not airports:
-            send_message(chat_id, f"Nenhum aeroporto encontrado para '{text}'.", cancel_keyboard)
+            keyboard = {"inline_keyboard": [
+                [{"text": "Tentar Novamente", "callback_data": "retry_origin" if state == "origin" else "search_now"}],
+                [{"text": "Menu Principal", "callback_data": "main_menu"}]
+            ]}
+            send_message(chat_id, f"Nenhum aeroporto encontrado para '*{text}*'.\n\nTente outra cidade.", keyboard)
             return
 
         data["airports"] = {a["code"]: f"{a['city']} - {a['name']}" for a in airports}
@@ -369,7 +450,12 @@ def handle_message(message):
     elif state in ["destination", "search_destination"]:
         airports = search_airports(text)
         if not airports:
-            send_message(chat_id, f"Nenhum aeroporto encontrado para '{text}'.", cancel_keyboard)
+            keyboard = {"inline_keyboard": [
+                [{"text": "Tentar Novamente", "callback_data": "retry_dest"}],
+                [{"text": "Mudar Origem", "callback_data": "search_now" if state == "search_destination" else "new_monitor"}],
+                [{"text": "Menu Principal", "callback_data": "main_menu"}]
+            ]}
+            send_message(chat_id, f"Nenhum aeroporto encontrado para '*{text}*'.\n\nTente outra cidade.", keyboard)
             return
 
         data["airports"] = {a["code"]: f"{a['city']} - {a['name']}" for a in airports}
@@ -466,39 +552,10 @@ def handle_callback(callback_query):
         send_message(chat_id, "*Buscar Voo*\n\nDigite o nome da cidade de origem:", cancel_keyboard)
 
     elif action == "my_monitors":
-        monitors = redis_get(f"monitors:{user_id}") or []
-        if not monitors:
-            keyboard = {"inline_keyboard": [
-                [{"text": "Criar Monitoramento", "callback_data": "new_monitor"}],
-                [{"text": "Menu Principal", "callback_data": "main_menu"}]
-            ]}
-            send_message(chat_id, "*Meus Monitoramentos*\n\nVocê não tem monitoramentos ativos.", keyboard)
-            return
-
-        text = "*Meus Monitoramentos*\n\n"
-        keyboard_buttons = []
-        for i, m in enumerate(monitors):
-            text += f"*{m['origin']} → {m['destination']}*\n"
-            text += f"  Data: {m['departure_date']}\n\n"
-            keyboard_buttons.append([{"text": f"Excluir #{i+1}", "callback_data": f"delete_{i}"}])
-
-        keyboard_buttons.append([{"text": "Menu Principal", "callback_data": "main_menu"}])
-        send_message(chat_id, text, {"inline_keyboard": keyboard_buttons})
+        handle_my_monitors(chat_id, user_id)
 
     elif action == "help":
-        help_text = """*Como usar:*
-
-1. Clique em Novo Monitoramento
-2. Digite a cidade de origem
-3. Digite a cidade de destino
-4. Informe as datas
-5. Receba alertas!
-
-*Dicas:*
-- Digite o nome da cidade (ex: São Paulo)
-- O bot mostra os aeroportos disponíveis"""
-        keyboard = {"inline_keyboard": [[{"text": "Menu Principal", "callback_data": "main_menu"}]]}
-        send_message(chat_id, help_text, keyboard)
+        handle_help(chat_id)
 
     elif action.startswith("origin_") or action.startswith("sorigin_"):
         code = action.replace("origin_", "").replace("sorigin_", "")
@@ -547,8 +604,14 @@ def handle_callback(callback_query):
             offers = search_flights(data["origin"], data["destination"], data["departure_date"], data.get("return_date"), adults)
 
             if not offers:
-                keyboard = {"inline_keyboard": [[{"text": "Menu Principal", "callback_data": "main_menu"}]]}
-                send_message(chat_id, "*Nenhum voo encontrado*\n\nTente outras datas ou destinos.", keyboard)
+                keyboard = {"inline_keyboard": [
+                    [{"text": "Tentar Outras Datas", "callback_data": "retry_dates"}],
+                    [{"text": "Nova Busca", "callback_data": "search_now"}],
+                    [{"text": "Menu Principal", "callback_data": "main_menu"}]
+                ]}
+                # Salvar dados para retry
+                redis_set(f"state:{user_id}", {"state": "no_results", "data": data})
+                send_message(chat_id, "*Nenhum voo encontrado para essa data*\n\nOs preços são baseados em buscas recentes. Tente datas diferentes ou outro destino.", keyboard)
             else:
                 text = f"*Voos: {data.get('origin_name', data['origin'])} → {data.get('destination_name', data['destination'])}*\n\n"
                 for i, o in enumerate(offers, 1):
@@ -564,7 +627,11 @@ def handle_callback(callback_query):
                     text += "\n"
 
                 text += "_Preços em cache (podem variar)_"
-                keyboard = {"inline_keyboard": [[{"text": "Menu Principal", "callback_data": "main_menu"}]]}
+                keyboard = {"inline_keyboard": [
+                    [{"text": "Nova Busca", "callback_data": "search_now"}],
+                    [{"text": "Criar Alerta", "callback_data": "new_monitor"}],
+                    [{"text": "Menu Principal", "callback_data": "main_menu"}]
+                ]}
                 send_message(chat_id, text, keyboard)
 
             redis_set(f"state:{user_id}", None)
@@ -588,8 +655,32 @@ def handle_callback(callback_query):
             monitors.pop(idx)
             redis_set(f"monitors:{user_id}", monitors)
 
+        keyboard = {"inline_keyboard": [
+            [{"text": "Ver Meus Alertas", "callback_data": "my_monitors"}],
+            [{"text": "Criar Novo Alerta", "callback_data": "new_monitor"}],
+            [{"text": "Menu Principal", "callback_data": "main_menu"}]
+        ]}
+        send_message(chat_id, "Monitoramento excluído com sucesso!", keyboard)
+
+    # Retry callbacks
+    elif action == "retry_origin":
+        redis_set(f"state:{user_id}", {"state": "origin", "data": {}})
         keyboard = {"inline_keyboard": [[{"text": "Menu Principal", "callback_data": "main_menu"}]]}
-        send_message(chat_id, "Monitoramento excluído!", keyboard)
+        send_message(chat_id, "*Novo Monitoramento*\n\nDigite o nome da cidade de origem:", keyboard)
+
+    elif action == "retry_dest":
+        # Manter a origem e pedir destino novamente
+        keyboard = {"inline_keyboard": [[{"text": "Menu Principal", "callback_data": "main_menu"}]]}
+        origin_name = data.get("origin_name", data.get("origin", ""))
+        send_message(chat_id, f"Origem: *{origin_name}*\n\nDigite o nome da cidade de destino:", keyboard)
+
+    elif action == "retry_dates":
+        # Manter origem e destino, pedir nova data
+        redis_set(f"state:{user_id}", {"state": "search_departure_date", "data": data})
+        keyboard = {"inline_keyboard": [[{"text": "Menu Principal", "callback_data": "main_menu"}]]}
+        origin_name = data.get("origin_name", data.get("origin", ""))
+        dest_name = data.get("destination_name", data.get("destination", ""))
+        send_message(chat_id, f"*{origin_name} → {dest_name}*\n\nDigite uma nova data de ida (DD/MM/AAAA):", keyboard)
 
 
 def finish_monitor(chat_id, user_id, data):
@@ -622,7 +713,12 @@ Ida: {data['departure_date']}"""
 
     text += "\n\n_Você receberá alertas quando o preço baixar!_"
 
-    keyboard = {"inline_keyboard": [[{"text": "Menu Principal", "callback_data": "main_menu"}]]}
+    keyboard = {"inline_keyboard": [
+        [{"text": "Criar Outro Alerta", "callback_data": "new_monitor"}],
+        [{"text": "Ver Meus Alertas", "callback_data": "my_monitors"}],
+        [{"text": "Buscar Voo Agora", "callback_data": "search_now"}],
+        [{"text": "Menu Principal", "callback_data": "main_menu"}]
+    ]}
     send_message(chat_id, text, keyboard)
 
 
