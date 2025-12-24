@@ -15,6 +15,10 @@ AMADEUS_SECRET = os.environ.get('AMADEUS_API_SECRET', '')
 UPSTASH_URL = os.environ.get('UPSTASH_REDIS_REST_URL', '')
 UPSTASH_TOKEN = os.environ.get('UPSTASH_REDIS_REST_TOKEN', '')
 
+# Amadeus: 'test' ou 'production'
+AMADEUS_ENV = os.environ.get('AMADEUS_ENV', 'test')
+AMADEUS_BASE_URL = 'https://api.amadeus.com' if AMADEUS_ENV == 'production' else 'https://test.api.amadeus.com'
+
 # Timeout padrão para requisições HTTP (10 segundos)
 HTTP_TIMEOUT = 10
 
@@ -212,7 +216,7 @@ def get_amadeus_token():
     if _amadeus_token_cache["token"] and _amadeus_token_cache["expires_at"] > now:
         return _amadeus_token_cache["token"]
 
-    url = "https://test.api.amadeus.com/v1/security/oauth2/token"
+    url = f"{AMADEUS_BASE_URL}/v1/security/oauth2/token"
     data = urllib.parse.urlencode({
         "grant_type": "client_credentials",
         "client_id": AMADEUS_KEY,
@@ -249,7 +253,7 @@ def search_airports(keyword):
     if not token:
         return []
 
-    url = f"https://test.api.amadeus.com/v1/reference-data/locations?keyword={urllib.parse.quote(keyword)}&subType=AIRPORT,CITY"
+    url = f"{AMADEUS_BASE_URL}/v1/reference-data/locations?keyword={urllib.parse.quote(keyword)}&subType=AIRPORT,CITY"
     req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
 
     try:
@@ -279,7 +283,7 @@ def search_flights(origin, destination, departure_date, return_date=None, adults
     if return_date:
         params += f"&returnDate={return_date}"
 
-    url = f"https://test.api.amadeus.com/v2/shopping/flight-offers?{params}"
+    url = f"{AMADEUS_BASE_URL}/v2/shopping/flight-offers?{params}"
     req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
 
     try:
