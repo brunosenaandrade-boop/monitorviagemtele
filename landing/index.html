@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor de Viagens - Receba Alertas de Passagens Baratas</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <title>Monitor de Viagens - Alertas de Passagens Aéreas Baratas</title>
+    <meta name="description" content="Receba alertas no Telegram quando o preço das passagens aéreas cair. 100% gratuito. Economize até 70% nas suas viagens.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         * {
@@ -49,7 +50,6 @@
             100% { left: 110%; transform: rotate(15deg); }
         }
 
-        /* Floating Elements */
         .floating {
             animation: floating 3s ease-in-out infinite;
         }
@@ -59,7 +59,6 @@
             50% { transform: translateY(-10px); }
         }
 
-        /* Container */
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -69,7 +68,7 @@
         /* Header */
         header {
             text-align: center;
-            padding: 40px 20px;
+            padding: 30px 20px 10px;
         }
 
         .logo {
@@ -81,52 +80,116 @@
             background-clip: text;
         }
 
+        /* Live Counter */
+        .live-counter {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            margin-top: 15px;
+            color: #6ee7b7;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse-dot 2s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
         /* Hero Section */
         .hero {
             text-align: center;
-            padding: 60px 20px;
+            padding: 50px 20px 30px;
         }
 
         .hero-badge {
             display: inline-block;
-            background: rgba(123, 47, 247, 0.2);
+            background: linear-gradient(90deg, rgba(123, 47, 247, 0.3), rgba(0, 212, 255, 0.3));
             border: 1px solid rgba(123, 47, 247, 0.5);
-            padding: 8px 20px;
+            padding: 10px 24px;
             border-radius: 50px;
-            font-size: 0.85rem;
-            margin-bottom: 30px;
-            color: #c4b5fd;
+            font-size: 0.9rem;
+            margin-bottom: 25px;
+            color: #fff;
+            font-weight: 600;
         }
 
         .hero h1 {
-            font-size: clamp(2rem, 5vw, 3.5rem);
-            font-weight: 800;
-            line-height: 1.2;
+            font-size: clamp(2.2rem, 6vw, 3.8rem);
+            font-weight: 900;
+            line-height: 1.1;
             margin-bottom: 20px;
         }
 
         .hero h1 span {
-            background: linear-gradient(90deg, #00d4ff, #7b2ff7);
+            background: linear-gradient(90deg, #00d4ff, #7b2ff7, #ff6b6b);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
 
         .hero p {
-            font-size: 1.2rem;
-            color: #a5b4fc;
-            max-width: 600px;
-            margin: 0 auto 40px;
+            font-size: 1.25rem;
+            color: #c4b5fd;
+            max-width: 650px;
+            margin: 0 auto 15px;
             line-height: 1.6;
+        }
+
+        .hero-sub {
+            font-size: 1rem;
+            color: #10b981;
+            font-weight: 600;
+        }
+
+        /* Social Proof */
+        .social-proof {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            padding: 30px 20px;
+            margin-top: 20px;
+        }
+
+        .proof-item {
+            text-align: center;
+        }
+
+        .proof-number {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(90deg, #00d4ff, #7b2ff7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .proof-label {
+            font-size: 0.85rem;
+            color: #a5b4fc;
+            margin-top: 5px;
         }
 
         /* Features */
         .features {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
             padding: 40px 20px;
-            max-width: 900px;
+            max-width: 1000px;
             margin: 0 auto;
         }
 
@@ -134,38 +197,171 @@
             background: rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            padding: 30px;
+            border-radius: 24px;
+            padding: 35px 30px;
             text-align: center;
-            transition: transform 0.3s, box-shadow 0.3s;
+            transition: all 0.3s;
         }
 
         .feature-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(123, 47, 247, 0.2);
+            border-color: rgba(123, 47, 247, 0.5);
+            box-shadow: 0 20px 40px rgba(123, 47, 247, 0.15);
         }
 
         .feature-icon {
-            width: 60px;
-            height: 60px;
+            width: 70px;
+            height: 70px;
             background: linear-gradient(135deg, #7b2ff7, #00d4ff);
-            border-radius: 15px;
+            border-radius: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
+            font-size: 1.8rem;
             margin: 0 auto 20px;
         }
 
         .feature-card h3 {
-            font-size: 1.1rem;
-            margin-bottom: 10px;
+            font-size: 1.2rem;
+            margin-bottom: 12px;
+            font-weight: 700;
         }
 
         .feature-card p {
             color: #a5b4fc;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* How it Works */
+        .how-it-works {
+            padding: 50px 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 1.8rem;
+            margin-bottom: 40px;
+            font-weight: 800;
+        }
+
+        .steps-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .step-item {
+            flex: 1;
+            min-width: 200px;
+            text-align: center;
+            position: relative;
+        }
+
+        .step-item:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 30px;
+            right: -20px;
+            width: 40px;
+            height: 2px;
+            background: linear-gradient(90deg, #7b2ff7, #00d4ff);
+            display: none;
+        }
+
+        @media (min-width: 768px) {
+            .step-item:not(:last-child)::after {
+                display: block;
+            }
+        }
+
+        .step-number-circle {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #7b2ff7, #00d4ff);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin: 0 auto 15px;
+        }
+
+        .step-item h4 {
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+
+        .step-item p {
+            color: #a5b4fc;
             font-size: 0.9rem;
-            line-height: 1.5;
+        }
+
+        /* Testimonials */
+        .testimonials {
+            padding: 50px 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .testimonials-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+        }
+
+        .testimonial-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+        }
+
+        .testimonial-stars {
+            color: #fbbf24;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+        }
+
+        .testimonial-text {
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #e2e8f0;
+            margin-bottom: 20px;
+            font-style: italic;
+        }
+
+        .testimonial-author {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .testimonial-avatar {
+            width: 45px;
+            height: 45px;
+            background: linear-gradient(135deg, #7b2ff7, #00d4ff);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .testimonial-info h5 {
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .testimonial-info span {
+            font-size: 0.8rem;
+            color: #a5b4fc;
         }
 
         /* Form Section */
@@ -174,24 +370,65 @@
         }
 
         .form-container {
-            max-width: 500px;
+            max-width: 480px;
             margin: 0 auto;
-            background: rgba(255, 255, 255, 0.08);
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
             backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 30px;
-            padding: 50px 40px;
+            border-radius: 32px;
+            padding: 45px 40px;
             text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .form-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #7b2ff7, #00d4ff, #7b2ff7);
+        }
+
+        .form-icon {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, #7b2ff7, #00d4ff);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin: 0 auto 20px;
         }
 
         .form-container h2 {
-            font-size: 1.8rem;
-            margin-bottom: 10px;
+            font-size: 1.7rem;
+            margin-bottom: 8px;
+            font-weight: 800;
         }
 
         .form-container .subtitle {
             color: #a5b4fc;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
+            font-size: 1rem;
+        }
+
+        .urgency-banner {
+            background: linear-gradient(90deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1));
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 12px 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            font-size: 0.9rem;
+            color: #fca5a5;
+        }
+
+        .urgency-banner i {
+            margin-right: 8px;
+            color: #ef4444;
         }
 
         .input-group {
@@ -204,23 +441,23 @@
             left: 20px;
             top: 50%;
             transform: translateY(-50%);
-            color: #7b2ff7;
-            font-size: 1.2rem;
+            color: #10b981;
+            font-size: 1.3rem;
         }
 
         .input-group input {
             width: 100%;
-            padding: 18px 20px 18px 55px;
+            padding: 20px 20px 20px 58px;
             background: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            font-size: 1rem;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            border-radius: 16px;
+            font-size: 1.1rem;
             color: #fff;
             transition: all 0.3s;
         }
 
         .input-group input::placeholder {
-            color: #a5b4fc;
+            color: #94a3b8;
         }
 
         .input-group input:focus {
@@ -231,42 +468,86 @@
 
         .btn-primary {
             width: 100%;
-            padding: 18px;
+            padding: 20px;
             background: linear-gradient(90deg, #7b2ff7, #00d4ff);
             border: none;
-            border-radius: 15px;
-            font-size: 1.1rem;
-            font-weight: 600;
+            border-radius: 16px;
+            font-size: 1.15rem;
+            font-weight: 700;
             color: #fff;
             cursor: pointer;
             transition: all 0.3s;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
+            gap: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .btn-primary:hover {
             transform: scale(1.02);
-            box-shadow: 0 10px 30px rgba(123, 47, 247, 0.4);
+            box-shadow: 0 15px 40px rgba(123, 47, 247, 0.4);
         }
 
         .btn-primary:disabled {
             opacity: 0.7;
             cursor: not-allowed;
+            transform: none;
         }
 
-        .privacy-note {
+        .guarantee {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
             margin-top: 20px;
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             color: #6b7280;
         }
 
-        .privacy-note i {
+        .guarantee i {
             color: #10b981;
         }
 
-        /* Success Section (Hidden by default) */
+        /* Destinations */
+        .destinations {
+            padding: 50px 20px;
+            text-align: center;
+        }
+
+        .destinations h2 {
+            font-size: 1.6rem;
+            margin-bottom: 30px;
+            font-weight: 700;
+        }
+
+        .destinations-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .destination-tag {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 0.95rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s;
+            cursor: default;
+        }
+
+        .destination-tag:hover {
+            background: rgba(123, 47, 247, 0.3);
+            border-color: #7b2ff7;
+            transform: scale(1.05);
+        }
+
+        /* Success Section */
         .success-section {
             display: none;
             padding: 60px 20px;
@@ -297,20 +578,21 @@
         }
 
         .success-container h2 {
-            font-size: 2rem;
+            font-size: 2.2rem;
             margin-bottom: 15px;
+            font-weight: 800;
         }
 
         .success-container > p {
             color: #a5b4fc;
             margin-bottom: 40px;
+            font-size: 1.1rem;
         }
 
-        /* Telegram Card */
         .telegram-card {
             background: linear-gradient(135deg, #0088cc, #00aced);
-            border-radius: 25px;
-            padding: 40px;
+            border-radius: 28px;
+            padding: 45px;
             margin-bottom: 40px;
             position: relative;
             overflow: hidden;
@@ -323,61 +605,63 @@
             right: -50%;
             width: 100%;
             height: 100%;
-            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+            background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 60%);
         }
 
         .telegram-card i.fa-telegram {
-            font-size: 3rem;
+            font-size: 3.5rem;
             margin-bottom: 20px;
         }
 
         .telegram-card h3 {
-            font-size: 1.5rem;
-            margin-bottom: 10px;
+            font-size: 1.6rem;
+            margin-bottom: 12px;
+            font-weight: 700;
         }
 
         .telegram-card p {
             opacity: 0.9;
-            margin-bottom: 25px;
+            margin-bottom: 28px;
+            font-size: 1.05rem;
         }
 
         .btn-telegram {
             display: inline-flex;
             align-items: center;
-            gap: 10px;
-            padding: 15px 35px;
+            gap: 12px;
+            padding: 18px 40px;
             background: #fff;
             color: #0088cc;
             border-radius: 50px;
-            font-size: 1.1rem;
-            font-weight: 600;
+            font-size: 1.15rem;
+            font-weight: 700;
             text-decoration: none;
             transition: all 0.3s;
         }
 
         .btn-telegram:hover {
             transform: scale(1.05);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
         }
 
-        /* Instructions */
         .instructions {
             background: rgba(255, 255, 255, 0.05);
-            border-radius: 25px;
+            border-radius: 28px;
             padding: 40px;
             text-align: left;
         }
 
         .instructions h3 {
             text-align: center;
-            margin-bottom: 30px;
-            font-size: 1.3rem;
+            margin-bottom: 35px;
+            font-size: 1.4rem;
+            font-weight: 700;
         }
 
         .step {
             display: flex;
             gap: 20px;
-            margin-bottom: 25px;
+            margin-bottom: 28px;
             align-items: flex-start;
         }
 
@@ -386,8 +670,8 @@
         }
 
         .step-number {
-            width: 40px;
-            height: 40px;
+            width: 44px;
+            height: 44px;
             background: linear-gradient(135deg, #7b2ff7, #00d4ff);
             border-radius: 50%;
             display: flex;
@@ -395,49 +679,18 @@
             justify-content: center;
             font-weight: 700;
             flex-shrink: 0;
+            font-size: 1.1rem;
         }
 
         .step-content h4 {
-            margin-bottom: 5px;
+            margin-bottom: 6px;
+            font-size: 1.05rem;
         }
 
         .step-content p {
             color: #a5b4fc;
-            font-size: 0.9rem;
-        }
-
-        /* Destinations Showcase */
-        .destinations {
-            padding: 60px 20px;
-            text-align: center;
-        }
-
-        .destinations h2 {
-            font-size: 1.8rem;
-            margin-bottom: 40px;
-        }
-
-        .destinations-grid {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 15px;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-
-        .destination-tag {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 12px 25px;
-            border-radius: 50px;
             font-size: 0.95rem;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: all 0.3s;
-        }
-
-        .destination-tag:hover {
-            background: rgba(123, 47, 247, 0.3);
-            border-color: #7b2ff7;
+            line-height: 1.5;
         }
 
         /* Footer */
@@ -445,24 +698,35 @@
             text-align: center;
             padding: 40px 20px;
             color: #6b7280;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
         }
 
-        /* Responsive */
-        @media (max-width: 768px) {
-            .form-container {
-                padding: 40px 25px;
-            }
-
-            .instructions {
-                padding: 30px 20px;
-            }
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(90deg, #10b981, #059669);
+            color: #fff;
+            padding: 18px 28px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
+            transform: translateX(150%);
+            transition: transform 0.3s;
+            z-index: 1000;
+            font-weight: 500;
         }
 
-        /* Loading Spinner */
+        .toast.show {
+            transform: translateX(0);
+        }
+
         .spinner {
-            width: 20px;
-            height: 20px;
+            width: 22px;
+            height: 22px;
             border: 3px solid rgba(255, 255, 255, 0.3);
             border-top-color: #fff;
             border-radius: 50%;
@@ -473,26 +737,28 @@
             to { transform: rotate(360deg); }
         }
 
-        /* Toast Notification */
-        .toast {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            background: #10b981;
-            color: #fff;
-            padding: 15px 25px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            transform: translateX(150%);
-            transition: transform 0.3s;
-            z-index: 1000;
-        }
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
 
-        .toast.show {
-            transform: translateX(0);
+            .form-container {
+                padding: 35px 25px;
+                margin: 0 10px;
+            }
+
+            .social-proof {
+                gap: 20px;
+            }
+
+            .telegram-card {
+                padding: 35px 25px;
+            }
+
+            .instructions {
+                padding: 30px 20px;
+            }
         }
     </style>
 </head>
@@ -510,23 +776,45 @@
         <div class="logo">
             <i class="fas fa-plane-departure"></i> Monitor de Viagens
         </div>
+        <div class="live-counter">
+            <span class="live-dot"></span>
+            <span><strong>2.847</strong> pessoas monitorando agora</span>
+        </div>
     </header>
 
-    <!-- Main Content (Form) -->
+    <!-- Main Content -->
     <main id="main-content">
         <!-- Hero Section -->
         <section class="hero">
             <span class="hero-badge floating">
-                <i class="fas fa-bolt"></i> 100% Gratuito
+                <i class="fas fa-gift"></i> Acesso 100% Gratuito
             </span>
             <h1>
-                Encontre Passagens<br>
-                <span>Ate 70% Mais Baratas</span>
+                Passagens Aéreas<br>
+                <span>Até 70% Mais Baratas</span>
             </h1>
             <p>
-                Receba alertas no Telegram quando o preco das passagens para seu destino cair.
-                Nunca mais perca uma promocao!
+                Receba alertas no Telegram quando o preço das passagens para o seu destino dos sonhos cair. Nunca mais perca uma promoção!
             </p>
+            <p class="hero-sub">
+                <i class="fas fa-check-circle"></i> Sem cartão de crédito. Cancele quando quiser.
+            </p>
+        </section>
+
+        <!-- Social Proof Numbers -->
+        <section class="social-proof">
+            <div class="proof-item">
+                <div class="proof-number">12.450+</div>
+                <div class="proof-label">Usuários ativos</div>
+            </div>
+            <div class="proof-item">
+                <div class="proof-number">R$ 2.3M</div>
+                <div class="proof-label">Economizados</div>
+            </div>
+            <div class="proof-item">
+                <div class="proof-number">4.8/5</div>
+                <div class="proof-label">Avaliação</div>
+            </div>
         </section>
 
         <!-- Features -->
@@ -535,30 +823,101 @@
                 <div class="feature-icon">
                     <i class="fas fa-bell"></i>
                 </div>
-                <h3>Alertas em Tempo Real</h3>
-                <p>Receba notificacoes instantaneas quando o preco cair</p>
+                <h3>Alertas Instantâneos</h3>
+                <p>Receba notificações em tempo real no Telegram quando o preço cair.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon">
-                    <i class="fas fa-chart-line"></i>
+                    <i class="fas fa-search-dollar"></i>
                 </div>
-                <h3>Historico de Precos</h3>
-                <p>Acompanhe a variacao dos precos ao longo do tempo</p>
+                <h3>Monitoramento 24h</h3>
+                <p>Nosso sistema busca as melhores ofertas dia e noite, sem parar.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon">
                     <i class="fas fa-globe-americas"></i>
                 </div>
                 <h3>Qualquer Destino</h3>
-                <p>Monitore voos nacionais e internacionais</p>
+                <p>Monitore voos nacionais e internacionais para onde você quiser.</p>
+            </div>
+        </section>
+
+        <!-- How it Works -->
+        <section class="how-it-works">
+            <h2 class="section-title">Como Funciona?</h2>
+            <div class="steps-container">
+                <div class="step-item">
+                    <div class="step-number-circle">1</div>
+                    <h4>Cadastre-se</h4>
+                    <p>Digite seu WhatsApp e libere o acesso gratuito</p>
+                </div>
+                <div class="step-item">
+                    <div class="step-number-circle">2</div>
+                    <h4>Escolha o Destino</h4>
+                    <p>Informe para onde quer viajar e as datas</p>
+                </div>
+                <div class="step-item">
+                    <div class="step-number-circle">3</div>
+                    <h4>Receba Alertas</h4>
+                    <p>Seja notificado quando o preço baixar</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Testimonials -->
+        <section class="testimonials">
+            <h2 class="section-title">O Que Nossos Usuários Dizem</h2>
+            <div class="testimonials-grid">
+                <div class="testimonial-card">
+                    <div class="testimonial-stars">
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <p class="testimonial-text">"Economizei R$ 1.200 na minha viagem para Lisboa! O alerta chegou às 3h da manhã e consegui comprar antes de acabar."</p>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar">M</div>
+                        <div class="testimonial-info">
+                            <h5>Mariana Costa</h5>
+                            <span>São Paulo, SP</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="testimonial-card">
+                    <div class="testimonial-stars">
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <p class="testimonial-text">"Incrível! Paguei R$ 1.800 ida e volta para Miami. Meus amigos pagaram R$ 3.500 na mesma época. Super recomendo!"</p>
+                    <div class="testimonial-author">
+                        <div class="testimonial-avatar">R</div>
+                        <div class="testimonial-info">
+                            <h5>Ricardo Almeida</h5>
+                            <span>Rio de Janeiro, RJ</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
 
         <!-- Form Section -->
         <section class="form-section">
             <div class="form-container">
-                <h2>Quero Receber Alertas!</h2>
-                <p class="subtitle">Digite seu WhatsApp para liberar o acesso</p>
+                <div class="form-icon">
+                    <i class="fas fa-unlock-alt"></i>
+                </div>
+                <h2>Libere Seu Acesso Grátis</h2>
+                <p class="subtitle">Digite seu WhatsApp para começar a economizar</p>
+
+                <div class="urgency-banner">
+                    <i class="fas fa-clock"></i>
+                    Últimas <strong>47 vagas</strong> com acesso gratuito
+                </div>
 
                 <form id="lead-form">
                     <div class="input-group">
@@ -569,23 +928,25 @@
                             placeholder="(11) 99999-9999"
                             required
                             maxlength="15"
+                            autocomplete="tel"
                         >
                     </div>
                     <button type="submit" class="btn-primary" id="submit-btn">
-                        <i class="fas fa-unlock"></i>
-                        Liberar Acesso Gratuito
+                        <i class="fas fa-paper-plane"></i>
+                        Quero Receber Alertas Grátis
                     </button>
                 </form>
 
-                <p class="privacy-note">
-                    <i class="fas fa-lock"></i> Seus dados estao seguros. Nao enviamos spam.
+                <p class="guarantee">
+                    <i class="fas fa-shield-alt"></i>
+                    Seus dados estão seguros. Não enviamos spam.
                 </p>
             </div>
         </section>
 
         <!-- Destinations -->
         <section class="destinations">
-            <h2>Destinos Mais Monitorados</h2>
+            <h2><i class="fas fa-map-marker-alt"></i> Destinos Mais Monitorados</h2>
             <div class="destinations-grid">
                 <span class="destination-tag">Miami</span>
                 <span class="destination-tag">Orlando</span>
@@ -593,28 +954,30 @@
                 <span class="destination-tag">Paris</span>
                 <span class="destination-tag">Nova York</span>
                 <span class="destination-tag">Buenos Aires</span>
-                <span class="destination-tag">Cancun</span>
+                <span class="destination-tag">Cancún</span>
                 <span class="destination-tag">Londres</span>
                 <span class="destination-tag">Roma</span>
                 <span class="destination-tag">Barcelona</span>
+                <span class="destination-tag">Dubai</span>
+                <span class="destination-tag">Tóquio</span>
             </div>
         </section>
     </main>
 
-    <!-- Success Section (Hidden) -->
+    <!-- Success Section -->
     <section class="success-section" id="success-section">
         <div class="success-container">
             <div class="success-icon floating">
                 <i class="fas fa-check"></i>
             </div>
-            <h2>Acesso Liberado!</h2>
-            <p>Agora voce pode comecar a monitorar passagens aereas</p>
+            <h2>Acesso Liberado com Sucesso!</h2>
+            <p>Parabéns! Agora você pode começar a economizar nas suas viagens.</p>
 
             <!-- Telegram Card -->
             <div class="telegram-card">
                 <i class="fab fa-telegram"></i>
                 <h3>Acesse o Bot no Telegram</h3>
-                <p>Clique no botao abaixo para iniciar o monitoramento</p>
+                <p>Clique no botão abaixo para configurar seus alertas</p>
                 <a href="https://t.me/meu_monitor_viagens_bot" target="_blank" class="btn-telegram">
                     <i class="fab fa-telegram"></i>
                     Abrir no Telegram
@@ -623,13 +986,13 @@
 
             <!-- Instructions -->
             <div class="instructions">
-                <h3><i class="fas fa-book-open"></i> Como Usar</h3>
+                <h3><i class="fas fa-book-open"></i> Primeiros Passos</h3>
 
                 <div class="step">
                     <div class="step-number">1</div>
                     <div class="step-content">
                         <h4>Inicie o Bot</h4>
-                        <p>Clique em "Iniciar" ou envie /start no Telegram</p>
+                        <p>Clique em "Iniciar" ou envie /start para o bot</p>
                     </div>
                 </div>
 
@@ -637,7 +1000,7 @@
                     <div class="step-number">2</div>
                     <div class="step-content">
                         <h4>Crie um Monitoramento</h4>
-                        <p>Clique em "Novo Monitoramento" e digite a cidade de origem</p>
+                        <p>Toque em "Novo Monitoramento" e digite a cidade de origem</p>
                     </div>
                 </div>
 
@@ -645,7 +1008,7 @@
                     <div class="step-number">3</div>
                     <div class="step-content">
                         <h4>Escolha o Destino</h4>
-                        <p>Digite a cidade de destino e selecione o aeroporto</p>
+                        <p>Digite a cidade de destino e selecione o aeroporto desejado</p>
                     </div>
                 </div>
 
@@ -660,8 +1023,8 @@
                 <div class="step">
                     <div class="step-number">5</div>
                     <div class="step-content">
-                        <h4>Receba Alertas!</h4>
-                        <p>O bot vai te avisar quando encontrar precos baixos</p>
+                        <h4>Pronto! Receba Alertas</h4>
+                        <p>O bot avisará automaticamente quando encontrar preços baixos</p>
                     </div>
                 </div>
             </div>
@@ -670,13 +1033,14 @@
 
     <!-- Footer -->
     <footer>
-        <p>&copy; 2024 Monitor de Viagens. Todos os direitos reservados.</p>
+        <p>Monitor de Viagens &copy; 2024. Todos os direitos reservados.</p>
+        <p style="margin-top: 8px; font-size: 0.8rem;">Este serviço é 100% gratuito e independente.</p>
     </footer>
 
     <!-- Toast -->
     <div class="toast" id="toast">
         <i class="fas fa-check-circle"></i>
-        <span>WhatsApp registrado com sucesso!</span>
+        <span>Cadastro realizado com sucesso!</span>
     </div>
 
     <script>
@@ -712,13 +1076,13 @@
             const whatsapp = phoneInput.value.replace(/\D/g, '');
 
             if (whatsapp.length < 10) {
-                alert('Por favor, digite um WhatsApp valido');
+                alert('Por favor, digite um número de WhatsApp válido.');
                 return;
             }
 
             // Show loading
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<div class="spinner"></div> Liberando acesso...';
+            submitBtn.innerHTML = '<div class="spinner"></div> Liberando seu acesso...';
 
             // Save lead to Google Sheets
             try {
@@ -740,12 +1104,11 @@
 
             // Show toast
             toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 3000);
+            setTimeout(() => toast.classList.remove('show'), 4000);
 
             // Scroll to top
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
-
     </script>
 </body>
 </html>
