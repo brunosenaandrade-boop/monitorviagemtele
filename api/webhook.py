@@ -21,6 +21,114 @@ HTTP_TIMEOUT = 10
 # Cache do token Amadeus (em memória por execução)
 _amadeus_token_cache = {"token": None, "expires_at": 0}
 
+# Base de aeroportos brasileiros (fallback para API de teste limitada)
+BRAZILIAN_AIRPORTS = [
+    {"code": "GRU", "name": "Aeroporto de Guarulhos", "city": "São Paulo"},
+    {"code": "CGH", "name": "Aeroporto de Congonhas", "city": "São Paulo"},
+    {"code": "VCP", "name": "Aeroporto de Viracopos", "city": "Campinas"},
+    {"code": "GIG", "name": "Aeroporto do Galeão", "city": "Rio de Janeiro"},
+    {"code": "SDU", "name": "Santos Dumont", "city": "Rio de Janeiro"},
+    {"code": "BSB", "name": "Aeroporto de Brasília", "city": "Brasília"},
+    {"code": "CNF", "name": "Aeroporto de Confins", "city": "Belo Horizonte"},
+    {"code": "PLU", "name": "Aeroporto da Pampulha", "city": "Belo Horizonte"},
+    {"code": "SSA", "name": "Aeroporto de Salvador", "city": "Salvador"},
+    {"code": "REC", "name": "Aeroporto do Recife", "city": "Recife"},
+    {"code": "FOR", "name": "Aeroporto de Fortaleza", "city": "Fortaleza"},
+    {"code": "POA", "name": "Aeroporto Salgado Filho", "city": "Porto Alegre"},
+    {"code": "CWB", "name": "Aeroporto Afonso Pena", "city": "Curitiba"},
+    {"code": "FLN", "name": "Aeroporto Hercílio Luz", "city": "Florianópolis"},
+    {"code": "NAT", "name": "Aeroporto de Natal", "city": "Natal"},
+    {"code": "MCZ", "name": "Aeroporto de Maceió", "city": "Maceió"},
+    {"code": "AJU", "name": "Aeroporto de Aracaju", "city": "Aracaju"},
+    {"code": "VIX", "name": "Aeroporto de Vitória", "city": "Vitória"},
+    {"code": "CGB", "name": "Aeroporto de Cuiabá", "city": "Cuiabá"},
+    {"code": "CGR", "name": "Aeroporto de Campo Grande", "city": "Campo Grande"},
+    {"code": "GYN", "name": "Aeroporto de Goiânia", "city": "Goiânia"},
+    {"code": "MAO", "name": "Aeroporto de Manaus", "city": "Manaus"},
+    {"code": "BEL", "name": "Aeroporto de Belém", "city": "Belém"},
+    {"code": "SLZ", "name": "Aeroporto de São Luís", "city": "São Luís"},
+    {"code": "THE", "name": "Aeroporto de Teresina", "city": "Teresina"},
+    {"code": "JPA", "name": "Aeroporto de João Pessoa", "city": "João Pessoa"},
+    {"code": "IGU", "name": "Aeroporto de Foz do Iguaçu", "city": "Foz do Iguaçu"},
+    {"code": "NVT", "name": "Aeroporto de Navegantes", "city": "Navegantes"},
+    {"code": "JOI", "name": "Aeroporto de Joinville", "city": "Joinville"},
+    {"code": "LDB", "name": "Aeroporto de Londrina", "city": "Londrina"},
+    {"code": "MGF", "name": "Aeroporto de Maringá", "city": "Maringá"},
+    {"code": "UDI", "name": "Aeroporto de Uberlândia", "city": "Uberlândia"},
+    {"code": "RAO", "name": "Aeroporto de Ribeirão Preto", "city": "Ribeirão Preto"},
+    {"code": "SJP", "name": "Aeroporto de São José do Rio Preto", "city": "São José do Rio Preto"},
+]
+
+# Destinos internacionais populares
+INTERNATIONAL_AIRPORTS = [
+    {"code": "MIA", "name": "Miami International", "city": "Miami"},
+    {"code": "MCO", "name": "Orlando International", "city": "Orlando"},
+    {"code": "JFK", "name": "John F. Kennedy", "city": "Nova York"},
+    {"code": "EWR", "name": "Newark Liberty", "city": "Nova York"},
+    {"code": "LAX", "name": "Los Angeles International", "city": "Los Angeles"},
+    {"code": "LIS", "name": "Aeroporto de Lisboa", "city": "Lisboa"},
+    {"code": "OPO", "name": "Aeroporto do Porto", "city": "Porto"},
+    {"code": "MAD", "name": "Aeroporto de Barajas", "city": "Madrid"},
+    {"code": "BCN", "name": "El Prat", "city": "Barcelona"},
+    {"code": "CDG", "name": "Charles de Gaulle", "city": "Paris"},
+    {"code": "ORY", "name": "Orly", "city": "Paris"},
+    {"code": "FCO", "name": "Fiumicino", "city": "Roma"},
+    {"code": "MXP", "name": "Malpensa", "city": "Milão"},
+    {"code": "LHR", "name": "Heathrow", "city": "Londres"},
+    {"code": "LGW", "name": "Gatwick", "city": "Londres"},
+    {"code": "AMS", "name": "Schiphol", "city": "Amsterdam"},
+    {"code": "FRA", "name": "Frankfurt Airport", "city": "Frankfurt"},
+    {"code": "MUC", "name": "Munich Airport", "city": "Munique"},
+    {"code": "EZE", "name": "Ezeiza", "city": "Buenos Aires"},
+    {"code": "SCL", "name": "Arturo Merino", "city": "Santiago"},
+    {"code": "BOG", "name": "El Dorado", "city": "Bogotá"},
+    {"code": "LIM", "name": "Jorge Chávez", "city": "Lima"},
+    {"code": "MEX", "name": "Benito Juárez", "city": "Cidade do México"},
+    {"code": "CUN", "name": "Cancún International", "city": "Cancún"},
+    {"code": "PTY", "name": "Tocumen", "city": "Cidade do Panamá"},
+    {"code": "DXB", "name": "Dubai International", "city": "Dubai"},
+    {"code": "NRT", "name": "Narita", "city": "Tóquio"},
+    {"code": "ICN", "name": "Incheon", "city": "Seul"},
+]
+
+ALL_AIRPORTS = BRAZILIAN_AIRPORTS + INTERNATIONAL_AIRPORTS
+
+
+def normalize_text(text):
+    """Remove acentos e converte para minúsculas."""
+    replacements = {
+        'á': 'a', 'à': 'a', 'ã': 'a', 'â': 'a', 'ä': 'a',
+        'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
+        'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i',
+        'ó': 'o', 'ò': 'o', 'õ': 'o', 'ô': 'o', 'ö': 'o',
+        'ú': 'u', 'ù': 'u', 'û': 'u', 'ü': 'u',
+        'ç': 'c', 'ñ': 'n'
+    }
+    text = text.lower()
+    for accented, plain in replacements.items():
+        text = text.replace(accented, plain)
+    return text
+
+
+def search_local_airports(keyword):
+    """Busca aeroportos na base local."""
+    keyword_normalized = normalize_text(keyword)
+    results = []
+
+    for airport in ALL_AIRPORTS:
+        city_normalized = normalize_text(airport["city"])
+        name_normalized = normalize_text(airport["name"])
+        code_lower = airport["code"].lower()
+
+        # Match por código, cidade ou nome
+        if (keyword_normalized in city_normalized or
+            keyword_normalized in name_normalized or
+            keyword_normalized == code_lower or
+            city_normalized.startswith(keyword_normalized)):
+            results.append(airport)
+
+    return results[:5]
+
 
 def redis_get(key):
     """Busca valor no Redis."""
@@ -130,7 +238,13 @@ def get_amadeus_token():
 
 
 def search_airports(keyword):
-    """Busca aeroportos."""
+    """Busca aeroportos - primeiro na base local, depois na API."""
+    # Primeiro tenta a base local (mais rápida e completa para BR)
+    local_results = search_local_airports(keyword)
+    if local_results:
+        return local_results
+
+    # Se não encontrou localmente, tenta a API Amadeus
     token = get_amadeus_token()
     if not token:
         return []
@@ -141,7 +255,7 @@ def search_airports(keyword):
     try:
         with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as response:
             data = json.loads(response.read().decode())
-            return [
+            results = [
                 {
                     "code": loc["iataCode"],
                     "name": loc.get("name", ""),
@@ -149,6 +263,7 @@ def search_airports(keyword):
                 }
                 for loc in data.get("data", [])[:5]
             ]
+            return results if results else []
     except urllib.error.URLError as e:
         print(f"Airport search error: {e}")
         return []
